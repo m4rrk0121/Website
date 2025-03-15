@@ -52,16 +52,20 @@ const server = app.listen(PORT, () => {
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
+// Graceful shutdown - Updated for Mongoose 8+
+process.on('SIGTERM', async () => {
   console.log('SIGTERM signal received: closing HTTP server');
-  server.close(() => {
-    console.log('HTTP server closed');
-    mongoose.connection.close(false, () => {
-      console.log('MongoDB connection closed');
-      process.exit(0);
-    });
-  });
+  await new Promise(resolve => server.close(resolve));
+  console.log('HTTP server closed');
+  
+  try {
+    await mongoose.connection.close();
+    console.log('MongoDB connection closed');
+    process.exit(0);
+  } catch (err) {
+    console.error('Error during shutdown:', err);
+    process.exit(1);
+  }
 });
 
 module.exports = app;
