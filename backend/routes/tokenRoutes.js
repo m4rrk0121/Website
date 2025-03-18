@@ -126,7 +126,7 @@ router.get('/tokens', async (req, res) => {
           : { 'fdv_usd': sortDirection === 'desc' ? -1 : 1 }
       },
       {
-        $limit: 120 // Return up to 120 tokens
+        $limit: 240 // Return up to 240 tokens
       }
     ]);
 
