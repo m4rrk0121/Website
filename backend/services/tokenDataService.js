@@ -6,8 +6,12 @@ const Token = require('../models/Token');
 const TokenPrice = require('../models/TokenPrice');
 require('dotenv').config();
 
-// Define the factory address
-const FACTORY_ADDRESS = '0xb51F74E6d8568119061f59Fd7f98824F1e666AC1';
+// Define multiple factory addresses
+const FACTORY_ADDRESSES = [
+  '0xb51F74E6d8568119061f59Fd7f98824F1e666AC1', // Original factory
+  '0x9bd7dCc13c532F37F65B0bF078C8f83E037e7445', // Replace with your second factory address
+  '0x05Dd3Dc91FAeFAf06499D8D7acecc5a7DecCD4be'  // Replace with your third factory address
+];
 
 // Define the TokenCreated event signature
 const TOKEN_CREATED_EVENT = 'TokenCreated(address,uint256,address,string,string,uint256,address,uint256)';
@@ -21,12 +25,10 @@ const coinGeckoApi = axios.create({
   }
 });
 
-// Function to fetch tokens deployed by factory
-
-// Updated fetchAndStoreTokens function with chunked block range search
+// Updated fetchAndStoreTokens function to handle multiple factory addresses
 async function fetchAndStoreTokens() {
   try {
-    console.log('Fetching tokens deployed by KOA factory...');
+    console.log('Fetching tokens deployed by multiple factories...');
     
     // Create a simplified RPC provider - let's use Ankr's public endpoint
     const provider = new ethers.JsonRpcProvider(process.env.BASE_RPC_URL || "https://rpc.ankr.com/base");
@@ -44,52 +46,58 @@ async function fetchAndStoreTokens() {
       
       console.log(`Fetching events from block ${START_BLOCK} to ${currentBlock}`);
       
-      // Query for events
-      const filter = {
-        address: FACTORY_ADDRESS,
-        topics: [eventTopic],
-        fromBlock: START_BLOCK,
-        toBlock: currentBlock
-      };
-      
       const tokens = [];
       
-      try {
-        const logs = await provider.getLogs(filter);
-        console.log(`Found ${logs.length} token creation events`);
+      // Process each factory address
+      for (const factoryAddress of FACTORY_ADDRESSES) {
+        console.log(`Processing factory address: ${factoryAddress}`);
         
-        // Process the logs
-        for (const log of logs) {
-          try {
-            // The event parameters are ABI encoded in the data field
-            const decodedData = ethers.AbiCoder.defaultAbiCoder().decode(
-              ['address', 'uint256', 'address', 'string', 'string', 'uint256', 'address', 'uint256'],
-              log.data
-            );
-            
-            const tokenAddress = decodedData[0];
-            const deployer = decodedData[2];
-            const name = decodedData[3];
-            const symbol = decodedData[4];
-            const supply = decodedData[5];
-            
-            console.log(`Found token: ${name} (${symbol}) at ${tokenAddress}`);
-            
-            // Add to our tokens array
-            tokens.push({
-              contractAddress: tokenAddress.toLowerCase(),
-              name,
-              symbol,
-              decimals: 18, // ERC20 tokens deployed by KOA have 18 decimals
-              createdAt: new Date(log.blockNumber * 2000), // Approximate timestamp based on block number (2s per block)
-              deployer: deployer.toLowerCase()
-            });
-          } catch (error) {
-            console.error(`Error decoding event data:`, error.message);
+        // Query for events from this factory
+        const filter = {
+          address: factoryAddress,
+          topics: [eventTopic],
+          fromBlock: START_BLOCK,
+          toBlock: currentBlock
+        };
+        
+        try {
+          const logs = await provider.getLogs(filter);
+          console.log(`Found ${logs.length} token creation events from factory ${factoryAddress}`);
+          
+          // Process the logs
+          for (const log of logs) {
+            try {
+              // The event parameters are ABI encoded in the data field
+              const decodedData = ethers.AbiCoder.defaultAbiCoder().decode(
+                ['address', 'uint256', 'address', 'string', 'string', 'uint256', 'address', 'uint256'],
+                log.data
+              );
+              
+              const tokenAddress = decodedData[0];
+              const deployer = decodedData[2];
+              const name = decodedData[3];
+              const symbol = decodedData[4];
+              const supply = decodedData[5];
+              
+              console.log(`Found token: ${name} (${symbol}) at ${tokenAddress} from factory ${factoryAddress}`);
+              
+              // Add to our tokens array
+              tokens.push({
+                contractAddress: tokenAddress.toLowerCase(),
+                name,
+                symbol,
+                decimals: 18, // ERC20 tokens deployed by factory have 18 decimals
+                createdAt: new Date(log.blockNumber * 2000), // Approximate timestamp based on block number (2s per block)
+                deployer: deployer.toLowerCase(),
+                factory: factoryAddress.toLowerCase() // Track which factory created this token
+              });
+            } catch (error) {
+              console.error(`Error decoding event data:`, error.message);
+            }
           }
+        } catch (chunkError) {
+          console.error(`Error fetching logs for factory ${factoryAddress}:`, chunkError.message);
         }
-      } catch (chunkError) {
-        console.error(`Error fetching logs:`, chunkError.message);
       }
       
       // Store tokens in database
@@ -112,7 +120,7 @@ async function fetchAndStoreTokens() {
       console.error('Error fetching or decoding logs:', error);
     }
   } catch (error) {
-    console.error('Error fetching and storing tokens from factory:', error);
+    console.error('Error fetching and storing tokens from factories:', error);
   }
 }
 
@@ -150,7 +158,7 @@ async function fetchPriceData(addresses) {
           result.tokens[address] = {
             price_usd: parseFloat(attributes.price_usd || 0),
             fdv_usd: parseFloat(attributes.fdv_usd || 0),
-                     // Explicitly handle volume
+            // Explicitly handle volume
             volume_usd: parseFloat(attributes.volume_usd.h24 || 0),
             
             last_updated: new Date(),
@@ -261,10 +269,10 @@ async function initializeDataFetching() {
   await fetchAndStorePrices();
   
   // Setup scheduled jobs
-  // Fetch tokens every 10 minutes
+  // Fetch tokens every 30 seconds
   cron.schedule('*/30 * * * * *', fetchAndStoreTokens);
   
-  // Fetch prices every 5 minutes
+  // Fetch prices every 30 seconds
   cron.schedule('*/30 * * * * *', fetchAndStorePrices);
   
   console.log('Data fetching service initialized with scheduled jobs');
