@@ -30,8 +30,8 @@ async function fetchAndStoreTokens() {
   try {
     console.log('Fetching tokens deployed by multiple factories...');
     
-    // Create a simplified RPC provider - let's use Ankr's public endpoint
-    const provider = new ethers.JsonRpcProvider(process.env.BASE_RPC_URL || "https://rpc.ankr.com/base");
+// Create a simplified RPC provider - using Base's official mainnet RPC endpoint
+const provider = new ethers.JsonRpcProvider(process.env.BASE_RPC_URL || "https://mainnet.base.org");
     
     // Calculate the event topic
     const eventTopic = ethers.id(TOKEN_CREATED_EVENT);
