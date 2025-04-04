@@ -32,7 +32,7 @@ async function fetchAndStoreTokens() {
     
 // Create a simplified RPC provider - using Base's official mainnet RPC endpoint with network specification
 const provider = new ethers.JsonRpcProvider(
-  process.env.BASE_RPC_URL || "https://mainnet.base.org", 
+  process.env.BASE_RPC_URL || "https://lb.drpc.org/ogrpc?network=base&dkey=AvAMvLTYM06DsPlW8y60clH7RZ6H5AoR76maqi5fk9AX", 
   {
     name: "base",
     chainId: 8453
