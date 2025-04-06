@@ -271,7 +271,7 @@ async function initializeDataFetching() {
   
   // Setup scheduled jobs
   // Fetch tokens every 30 seconds
-  cron.schedule('*/1 * * * *', fetchAndStoreTokens);
+  cron.schedule(('*/30 * * * * *', fetchAndStoreTokens);
   
   // Fetch prices every 30 seconds
   cron.schedule('*/30 * * * * *', fetchAndStorePrices);
