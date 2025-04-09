@@ -42,8 +42,8 @@ async function fetchAndStoreTokens() {
       const currentBlock = await provider.getBlockNumber();
       console.log(`Current block: ${currentBlock}`);
       
-      // Focus on the last 20,000 blocks
-      const START_BLOCK = Math.max(0, currentBlock - 20000);
+      // Focus on the last 2500 blocks
+      const START_BLOCK = Math.max(0, currentBlock - 2500);
       
       console.log(`Fetching events from block ${START_BLOCK} to ${currentBlock}`);
       
